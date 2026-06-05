@@ -1,0 +1,50 @@
+step_pass_threshold: 0.7
+
+category_rules:
+  - id: "A"
+    label: "完成目标_逻辑合理"
+    description: "core_prm+LLM综合评分高，且≥90%的步骤通过了单步审查，可直接用于蒸馏训练"
+    conditions:
+      all_of:
+        - metric: "composite_completion"
+          op: "ge"
+          value: 0.5
+        - metric: "step_pass_ratio"
+          op: "ge"
+          value: 0.90
+
+  - id: "B"
+    label: "完成目标_逻辑可疑"
+    description: "综合评分高但步骤通过率不足90%，存在较多争议步骤，需人工复核"
+    conditions:
+      all_of:
+        - metric: "composite_completion"
+          op: "ge"
+          value: 0.5
+        - metric: "step_pass_ratio"
+          op: "lt"
+          value: 0.90
+
+  - id: "C"
+    label: "未完成_局部合理"
+    description: "综合评分低但≥85%步骤通过了审查，可能含有价值的局部推理"
+    conditions:
+      all_of:
+        - metric: "composite_completion"
+          op: "lt"
+          value: 0.5
+        - metric: "step_pass_ratio"
+          op: "ge"
+          value: 0.85
+
+  - id: "D"
+    label: "未完成_逻辑异常"
+    description: "综合评分低且步骤通过率不足85%，建议丢弃或降权处理"
+    conditions:
+      all_of:
+        - metric: "composite_completion"
+          op: "lt"
+          value: 0.5
+        - metric: "step_pass_ratio"
+          op: "lt"
+          value: 0.85

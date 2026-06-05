@@ -1,0 +1,22 @@
+name: "agent_rrm_template"
+description: "基于执行前后状态变化评估每一步的模板"
+template: |
+  【任务信息】
+  任务目标: {task_desc}
+  子目标: {subgoal}
+
+  【当前步骤】
+  步骤编号: 第{step_idx}步
+  执行动作: {action_desc}
+  点击元素: {element_id}
+
+  【执行前 UI 状态】
+  {state_desc_before}
+
+  【执行后 UI 状态】
+  {state_desc_after}
+
+  请评估该步骤。你必须严格按照以下格式回答：
+  <think>基于执行前后状态变化的逻辑推理</think>
+  <critique>关于该动作是否冗余或错误的批判性反馈</critique>
+  <score>一个 0.0 到 1.0 之间的概率值，代表该动作达成目标的潜力</score>

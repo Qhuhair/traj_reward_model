@@ -1,0 +1,24 @@
+name: "qwen_traj_summary_v1"
+description: "Qwen3.5-4B 轨迹级总结 — 评估整条轨迹是否达成总目标"
+template: |
+  请评估以下GUI操作轨迹是否成功完成了总目标。
+
+  【总目标】{task_desc}
+
+  【子目标列表】
+  {subgoals_text}
+
+  【各步骤评分】
+  {steps_summary}
+
+  请综合所有步骤的评分和动作，判断整条轨迹是否完成了总目标。
+
+  评分规则：
+  - <think>分析轨迹的整体逻辑连贯性、关键步骤是否到位、有无冗余或偏离
+  - <critique>指出轨迹的优点和不足
+  - <score>输出0.0到1.0之间的数字（1.0=完全达成目标，0.0=完全偏离目标）
+
+  输出格式：
+  <thinking>分析内容</thinking>
+  <critique>评价内容</critique>
+  <score>0.0~1.0</score>

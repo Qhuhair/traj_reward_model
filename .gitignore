@@ -1,0 +1,26 @@
+# Large data / generated outputs
+Lora/
+output/
+trajs/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Logs
+*.log
+models/vllm/log/*.log
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# Local/editor files
+.DS_Store
+.vscode/
+.idea/
+
+# Temporary invalid git backup
+.git.invalid-*/

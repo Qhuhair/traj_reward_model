@@ -1,0 +1,10 @@
+gamma: 0.99
+lambda_gae: 0.95
+estimator: "td_gae"
+
+progress:
+  baseline_method: "running_mean"
+
+td_gae:
+  terminal_reward: 1.0
+  non_terminal_reward: 0.0

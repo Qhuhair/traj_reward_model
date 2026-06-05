@@ -1,0 +1,36 @@
+name: "qwen_sliding_window_v1"
+description: "Qwen3.5-4B 多模态滑动窗口 — 当前步图片+前后步文本上下文"
+template: |
+  请评估以下GUI操作步骤。你将看到当前步的截图（标注了点击位置）。
+
+  任务背景: {task_desc}
+
+  ========== 上一步的结果（已完成） ==========
+  动作: {prev_action}
+  子目标: {prev_subgoal}
+  评分: {prev_score}
+  评价: {prev_critique}
+
+  ========== 当前步（需要评估） ==========
+  子目标: {curr_subgoal}
+  动作: {curr_action}（元素: {curr_element_id}）
+  执行前状态: {curr_state_before}
+  执行后状态: {curr_state_after}
+
+  ========== 下一步（即将执行） ==========
+  子目标: {next_subgoal}
+  动作: {next_action}
+
+  ========================================
+
+  评分规则：
+  - <thinking>必须引用图中的标注位置和UI元素，结合前后步骤的连续性进行分析。
+  - <critique>中评分<0.6时必须指出问题，≥0.8时确认正确。
+  - <score>输出0.0到1.0之间的数字。
+
+  注意：上一步的评分仅供上下文参考，请独立评估当前步。
+
+  输出格式：
+  <thinking>此处写分析内容</thinking>
+  <critique>此处写评价内容</critique>
+  <score>0.0~1.0</score>

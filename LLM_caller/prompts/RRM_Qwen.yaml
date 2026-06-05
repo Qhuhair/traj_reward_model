@@ -1,0 +1,28 @@
+name: "local_model_qa_aligned"
+description: "/no_think 指令禁止 chain-of-thought 推理"
+template: |
+  请评估以下GUI操作步骤。你必须严格按照格式输出三个XML标签，不要添加解释或标记。
+
+  评分规则：
+  - <think>必须引用具体UI元素名称（如按钮名、页面标题），分析执行前后状态变化。
+  - <critique>中评分<0.6时必须指出问题，≥0.8时确认正确。
+  - <score>输出0.0到1.0之间的数字。
+
+  回答格式：
+  <think>此处写分析内容</think>
+  <critique>此处写评价内容</critique>
+  <score>0.0~1.0</score>
+
+  示例：
+  步骤1评估：
+  <think>执行前是携程主界面，包含"普通会员"、"攻略/景点"等元素；执行后进入社区论坛页面，显示"广场"标签、搜索按钮和用户生成的游记内容，表明成功导航到社区论坛模块。</think>
+  <critique>该步骤精准点击了社区入口，执行前后页面变化符合预期，没有冗余或错误。</critique>
+  <score>1.0</score>
+
+  现在评估以下步骤：
+
+  【任务】{task_desc}
+  【子目标】{subgoal}
+  【步骤{step_idx}】{action_desc}（元素: {element_id}）
+  【执行前】{state_desc_before}
+  【执行后】{state_desc_after}

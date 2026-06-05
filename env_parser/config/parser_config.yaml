@@ -1,0 +1,6 @@
+max_perception_elements: 30
+cluster_by_area: true
+include_coordinates: false
+strip_prefix: true
+area_bins: 3
+output_dir: "output"

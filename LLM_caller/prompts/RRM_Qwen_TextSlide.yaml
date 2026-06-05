@@ -1,0 +1,35 @@
+name: "qwen_text_slide_v1"
+description: "Qwen3.5-4B 纯文本滑动窗口 — 3步上下文，评估中间步"
+template: |
+  请评估以下GUI操作步骤。你将看到连续三步的描述，请重点评估【当前步】。
+
+  任务背景: {task_desc}
+
+  上一步：{prev_action}
+  上一步子目标：{prev_subgoal}
+
+  当前步：{curr_action}（元素: {curr_element_id}）
+  当前步子目标：{curr_subgoal}
+  执行前：{curr_state_before}
+  执行后：{curr_state_after}
+
+  下一步：{next_action}
+  下一步子目标：{next_subgoal}
+
+  你必须严格按照格式输出三个XML标签，不要添加解释或标记。
+
+  评分规则：
+  - <think>分析执行前后状态变化，引用具体UI元素
+  - <critique>评分<0.6时必须指出问题，≥0.8时确认正确
+  - <score>输出0.0到1.0之间的数字
+
+  回答格式：
+  <think>此处写分析内容</think>
+  <critique>此处写评价内容</critique>
+  <score>0.0~1.0</score>
+
+  示例：
+  步骤2评估（上一步是进入社区论坛）：
+  <think>上一步进入了社区论坛页面，当前步从社区论坛页面点击携程旅行主入口回到首页。首页顶部显示"普通会员"和"96"积分，表明已返回主页。该步骤完成了从社区回到主入口的导航，为下一步进入会员中心做准备。</think>
+  <critique>该步骤准确从社区页面导航回主界面，页面变化符合预期，没有冗余或错误。虽然未直接打开会员中心，但返回主页是进入会员中心的必要前置步骤。</critique>
+  <score>0.85</score>

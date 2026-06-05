@@ -1,0 +1,15 @@
+name: "qwen_gs_step2_visual"
+description: "GS Step 2 带截图 — 视觉匹配一致时，结合截图和状态验证评分"
+template: |
+  视觉扫描确认截图标注位置与动作描述一致。请结合截图和状态变化，判断操作是否正确。
+
+  任务目标: {task_desc}
+  子目标: {subgoal}
+  动作: {action_desc}
+  执行前状态: {state_desc_before}
+  执行后状态: {state_desc_after}
+
+  视觉扫描结果: {step1_output}
+
+  对比两张截图的变化，操作是否成功推进了任务目标？
+  只输出一行：【最终得分: 0】或【最终得分: 1】

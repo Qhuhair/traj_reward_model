@@ -1,0 +1,15 @@
+name: "qwen_gs_step2_text"
+description: "GS Step 2 仅文本 — 视觉匹配不一致时，仅根据状态文本评分"
+template: |
+  根据状态变化判断该步操作是否正确。
+
+  任务目标: {task_desc}
+  子目标: {subgoal}
+  动作: {action_desc}
+  执行前状态: {state_desc_before}
+  执行后状态: {state_desc_after}
+
+  注意：视觉扫描未能确认操作与截图一致，请仅根据状态文本描述判断。
+  判断标准：状态变化是否推进了任务目标。
+
+  只输出一行：【最终得分: 0】或【最终得分: 1】

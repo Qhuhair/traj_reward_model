@@ -1,0 +1,20 @@
+name: "qwen_image_only_v1"
+description: "Qwen3.5-4B 纯图片模式 — 仅输入截图+任务描述，不输入状态文本"
+template: |
+  请仅根据截图评估以下GUI操作步骤。你将看到两张截图：
+  - 图1（执行前/Before）：截图上用红色十字标出了本次点击的位置
+  - 图2（执行后/After）：点击操作执行后的屏幕
+
+  任务目标: {task_desc}
+  子目标: {subgoal}
+  步骤{step_idx}: {action_desc}（元素: {element_id}）
+
+  请根据截图中的页面变化判断该步骤是否成功。输出格式：
+
+  <thinking>此处写分析内容，引用截图中的可见元素</thinking>
+  <critique>此处写评价内容</critique>
+  <score>0.0~1.0</score>
+
+  注意：
+  - 截图中的底部导航栏标签（"首页"、"社区"、"我的"等）是App固定框架，不代表页面内容。
+  - 用最多3句话完成分析，直接输出XML标签。

@@ -1,0 +1,14 @@
+enabled_evaluators:
+  - "DensityEvaluator"
+  - "ConflictEvaluator"
+
+thresholds:
+  min_think_length: 20
+  conflict_delta_limit: -0.2
+  semantic_score_threshold: 0.8
+
+weights:
+  density: 0.4
+  conflict: 0.6
+
+accept_threshold: 0.5
