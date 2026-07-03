@@ -4,6 +4,7 @@ from adapters.deepseek_adapters import OpenAIStyleAdapter
 from adapters.qwen_vllm_adapter import QwenVLLMAdapter
 from adapters.ollama_adapter import OllamaAdapter
 from adapters.remote_qwen_adapter import RemoteQwenAdapter
+from adapters.responses_adapter import ResponsesAdapter
 from utils import ResponseParser, DebugLogger
 
 class LLMCaller:
@@ -26,6 +27,7 @@ class LLMCaller:
             "qwen_vllm": QwenVLLMAdapter,
             "ollama": OllamaAdapter,
             "remote_qwen": RemoteQwenAdapter,
+            "responses": ResponsesAdapter,
         }
         adapter_class = adapter_map.get(model_cfg['protocol'], OpenAIStyleAdapter)
         self.adapter = adapter_class(model_cfg)
@@ -37,7 +39,7 @@ class LLMCaller:
             
         self.logger = DebugLogger(enabled=self.config.get('debug', True))
 
-    def call(self, **kwargs):
+    def call(self, parse_response: bool = True, **kwargs):
         """
         使用关键字参数动态填充 Prompt。
         image_before / image_after 会传递给多模态 adapter。
@@ -57,4 +59,6 @@ class LLMCaller:
             self.config.get('active_model', 'unknown'),
             full_prompt, raw_response, duration
         )
+        if not parse_response:
+            return raw_response
         return ResponseParser.parse(raw_response)

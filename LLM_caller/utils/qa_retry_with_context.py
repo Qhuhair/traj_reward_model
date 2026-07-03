@@ -26,7 +26,7 @@ def retry_failed_steps(
     std_data: dict,
     llm_scores: list,
     qa_reports: list,
-    model: str = "qwen_local_mm",
+    model: str = "qwen_vllm_mm",
     prompt: str = "RRM_Qwen_Sliding",
     max_retries: int = 3,
 ) -> list:

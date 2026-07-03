@@ -24,3 +24,6 @@ env/
 
 # Temporary invalid git backup
 .git.invalid-*/
+
+# config
+LLM_caller/config.yaml

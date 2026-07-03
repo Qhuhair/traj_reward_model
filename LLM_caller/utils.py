@@ -11,6 +11,34 @@ class ConfigLoader:
 
 class ResponseParser:
     @staticmethod
+    def _normalize_score(value) -> float | None:
+        """将模型文本中的分数字符串归一化到 0.0-1.0，失败时返回 None。"""
+        try:
+            score = float(str(value).strip())
+        except (ValueError, TypeError):
+            return None
+        if 0.0 <= score <= 1.0:
+            return score
+        return None
+
+    @staticmethod
+    def _extract_score_fallback(raw_text: str) -> float | None:
+        """从非标准输出中兜底提取评分，优先取靠近评分关键词的最后一个数值。"""
+        patterns = [
+            r"(?:最终(?:评分|得分|决定)|评分|得分|分数|score)\s*(?:为|是|[:：=])?\s*([01](?:\.\d+)?)\s*(?:分)?",
+            r"(?:给|判为|打)\s*([01](?:\.\d+)?)\s*分",
+            r"([01](?:\.\d+)?)\s*分\s*(?:。|\.|；|;|$)",
+        ]
+        candidates = []
+        for pattern in patterns:
+            candidates.extend(re.findall(pattern, raw_text, re.IGNORECASE))
+        for candidate in reversed(candidates):
+            score = ResponseParser._normalize_score(candidate)
+            if score is not None:
+                return score
+        return None
+
+    @staticmethod
     def _parse_gs(raw_text: str) -> dict:
         """解析 GUI-Shepherd 的【视觉扫描】→【动作匹配】→【最终得分】格式"""
         result = {"think": "N/A", "critique": "N/A", "score": 0.0}
@@ -76,11 +104,11 @@ class ResponseParser:
             matches = re.findall(f"<{key}>(.*?)</{key}>", raw_text, re.DOTALL)
             result[key] = matches[-1].strip() if matches else "N/A"
         
-        # 3. 尝试将 score 转为 float
-        try:
-            result["score"] = float(result["score"])
-        except (ValueError, TypeError):
-            result["score"] = 0.0
+        # 3. 尝试将 score 转为 float；如果标签缺失，再从长推理文本中兜底寻找“评分 0.x”等表达。
+        score = ResponseParser._normalize_score(result["score"])
+        if score is None:
+            score = ResponseParser._extract_score_fallback(raw_text)
+        result["score"] = score if score is not None else 0.0
         return result
 
 class DebugLogger:

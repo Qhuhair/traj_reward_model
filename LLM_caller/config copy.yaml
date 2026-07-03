@@ -1,0 +1,98 @@
+active_model: "qwen_vllm_text"
+active_prompt: "RRM_Qwen"
+debug: true
+
+models:
+  deepseek:
+    protocol: "openai_style"
+    api_key: ""
+    base_url: "https://api.deepseek.com"
+    model_name: "deepseek-v4-pro"
+    temperature: 0.1
+
+  deepseek_gs:
+    protocol: "openai_style"
+    api_key: ""
+    base_url: "https://api.deepseek.com"
+    model_name: "deepseek-v4-pro"
+    temperature: 0.0
+    max_tokens: 512
+    system_message: "直接输出填空答案，不要输出推理过程。"
+
+  qwen_local:
+    protocol: "ollama"
+    api_key: "ollama"
+    base_url: "http://localhost:8002"
+    model_name: "qwen354b"
+    temperature: 0.1
+    max_tokens: 8192
+    think: false
+    system_message: "直接输出think critique score三个XML标签的评估结果，不要解释格式，不要输出推理过程。"
+
+  qwen_vllm_text:
+    protocol: "qwen_vllm"
+    api_key: "EMPTY"
+    base_url: "http://localhost:8002/v1"
+    model_name: "Qwen3.5-4B"
+    temperature: 0.1
+    max_tokens: 2048
+    system_message: "直接输出think critique score三个XML标签的评估结果，不要解释格式，不要输出推理过程。"
+
+  qwen_vllm_mm:
+    protocol: "qwen_vllm"
+    api_key: "EMPTY"
+    base_url: "http://localhost:8002/v1"
+    model_name: "Qwen3.5-4B"
+    temperature: 0.0
+    max_tokens: 4096
+    system_message: "你将看到两张手机截图（执行前标注了点击位置、执行后展示了结果）。请直接输出think critique score三个XML标签的评估结果，用3句话完成分析。"
+
+  codex_mm_baseline:
+    protocol: "responses"
+    env_key: ""
+    base_url: "https://api.get-codex.com/v1"
+    model_name: "gpt-5.5"
+    reasoning_effort: "high"
+    max_output_tokens: 2048
+    timeout: 300
+    system_message: "你是GUI轨迹评估基准模型。请根据任务、子目标、动作描述、执行前截图和执行后截图，严格输出think critique score三个XML标签；score为0.0到1.0之间的数字。"
+
+  qwen_local_mm:
+    protocol: "ollama"
+    api_key: "ollama"
+    base_url: "http://localhost:8002"
+    model_name: "qwen3.5:4b"
+    temperature: 0.0
+    max_tokens: 4096
+    think: true
+    seed: 42
+    repeat_penalty: 2.0
+    system_message: "你将看到两张手机截图（执行前标注了点击位置、执行后展示了结果）。请直接输出think critique score三个XML标签的评估结果，用3句话完成分析。"
+
+  qwen_remote:
+    protocol: "remote_qwen"
+    base_url: "http://154.8.219.40:9090/generate"
+    temperature: 0.1
+    max_tokens: 512
+    system_message: "直接输出think critique score三个XML标签的评估结果，不要解释格式，不要输出推理过程。"
+
+  qwen_gs:
+    protocol: "qwen_vllm"
+    api_key: "EMPTY"
+    base_url: "http://localhost:8002/v1"
+    model_name: "Qwen3.5-4B"
+    temperature: 0.0
+    max_tokens: 1024
+    system_message: "请严格按照每步给出的格式要求输出，不要添加额外内容。"
+
+  qwen_local_image:
+    protocol: "ollama"
+    api_key: "ollama"
+    base_url: "http://localhost:8002"
+    model_name: "qwen3.5:4b"
+    temperature: 0.0
+    max_tokens: 4096
+    think: true
+    seed: 42
+    repeat_penalty: 2.0
+    system_message: "你将看到两张手机截图。请根据截图中的页面变化判断操作是否成功，直接输出think critique score三个XML标签。"

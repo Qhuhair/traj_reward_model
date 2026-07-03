@@ -26,7 +26,7 @@ class SlidingWindowEvaluator:
 
     def __init__(self, caller: LLMCaller = None):
         self.caller = caller or LLMCaller(
-            model="qwen_local_mm",
+            model="qwen_vllm_mm",
             prompt="RRM_Qwen_Sliding"
         )
 
@@ -122,6 +122,6 @@ class SlidingWindowEvaluator:
 
 def evaluate_sliding(std_data: dict, model: str = None, prompt: str = None) -> list:
     """便捷入口"""
-    caller = LLMCaller(model=model or "qwen_local_mm", prompt=prompt or "RRM_Qwen_Sliding")
+    caller = LLMCaller(model=model or "qwen_vllm_mm", prompt=prompt or "RRM_Qwen_Sliding")
     evaluator = SlidingWindowEvaluator(caller)
     return evaluator.evaluate(std_data)

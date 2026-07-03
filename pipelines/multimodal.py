@@ -60,7 +60,7 @@ def process_one_traj(traj_id, run_dir):
     # Stage 2: LLM caller
     cmd = [PYTHON, os.path.join(PROJECT_ROOT, "LLM_caller", "main.py"),
            std_path, llm_path,
-           "--model=qwen_local_mm", "--prompt=RRM_Qwen_MM"]
+           "--model=qwen_vllm_mm", "--prompt=RRM_Qwen_MM"]
     if not run_cmd("LLM_caller", cmd):
         return False
 

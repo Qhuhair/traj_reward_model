@@ -25,7 +25,7 @@ models/
 先设置本地模型目录：
 
 ```bash
-export MODEL_PATH=/datasets/zhehu/models/Qwen3.5-4B
+export MODEL_PATH=/path/to/Qwen3.5-4B
 ```
 
 `MODEL_PATH` 指向本地 Hugging Face 模型目录。该目录应包含 `config.json`、
@@ -34,28 +34,55 @@ tokenizer 文件和 safetensors 权重分片。
 启动服务：
 
 ```bash
-python -m models.vllm.start --gpu-ids 3
+python -m models.vllm.start --gpu-ids 4
 ```
 
 `python -m models.vllm.start` 表示从仓库根目录以模块方式启动 vLLM 服务。
-`--gpu-ids 3` 会设置 `CUDA_VISIBLE_DEVICES=3`，让 vLLM 只使用物理 3 号 GPU。
+`--gpu-ids 4` 会设置 `CUDA_VISIBLE_DEVICES=4`，让 vLLM 只使用物理 4 号 GPU。
 默认配置会禁用 FlashInfer sampler，即设置 `VLLM_USE_FLASHINFER_SAMPLER=0`；
-默认端口是 `8000`，对外模型名是 `Qwen3.5-4B`，日志追加写入
-`models/vllm/log/vllm_qwen35_4b.log`。
+默认端口是 `8002`，对外模型名是 `Qwen3.5-4B`，日志追加写入当天日志文件，
+例如 `models/vllm/log/vllm_qwen35_4b_20260609.log`。
+
+## 同一 base 同时提供 base / LoRA 调用
+
+vLLM 支持在同一个 base 模型服务上挂载 LoRA adapter。本模块的约定是：
+
+- `--served-model-name` 是 base 模型对外名称，例如 `Qwen3.5-4B`。
+- `--lora-name` 是 LoRA adapter 对外名称，例如 `crossapp_kto`。
+- 调用 OpenAI 接口时，通过请求体里的 `model` 字段区分：
+  - `model="Qwen3.5-4B"` 调用 base。
+  - `model="crossapp_kto"` 调用加载 LoRA 后的模型。
+
+启动同一份 base 并挂载一个 LoRA：
+
+```bash
+python -m models.vllm.start --gpu-ids 4 --lora-path /path/to/checkpoint --lora-name crossapp_kto
+```
+
+`--lora-path` 指向 LoRA checkpoint 目录；`--lora-name` 是对外请求时使用的
+adapter 名称。底层命令会启用 vLLM 的 `--enable-lora` 和
+`--lora-modules crossapp_kto=/path/to/checkpoint`。代码中不要硬编码本机绝对路径。
+
+如需一次挂载多个 LoRA，可重复传入 `--lora-module`：
+
+```bash
+python -m models.vllm.start --gpu-ids 4 --lora-module crossapp_kto=/path/to/kto --lora-module crossapp_sft=/path/to/sft
+```
 
 兼容旧入口：
 
 ```bash
-python models/serve.py --gpu-ids 3
+python models/serve.py --gpu-ids 4
 ```
 
 ## 测试接口
 
 ```bash
-python models/test_model.py --base-url http://127.0.0.1:8000/v1
+python models/test_model.py --base-url http://127.0.0.1:8002/v1 --model Qwen3.5-4B --lora-model crossapp_kto
 ```
 
-`--base-url` 指定 OpenAI 兼容 API 根地址。默认模型名为 `Qwen3.5-4B`。
+`--base-url` 指定 OpenAI 兼容 API 根地址。`--model` 测试 base 模型名；
+`--lora-model` 测试 LoRA adapter 名称。
 
 ## 停止服务
 
@@ -71,3 +98,6 @@ pkill -f "vllm"
 `vllm/command.py`，进程处理放在 `vllm/process.py`，CLI 行为放在
 `vllm/cli.py`。不要硬编码机器相关模型路径；使用 `MODEL_PATH` 或
 `--model-path` 传入。
+
+model_path:/datasets/zhehu/models/Qwen3.5-4B
+lora_path:/home/zhehu/code/traj_reward_model/Lora/checkpoint-248

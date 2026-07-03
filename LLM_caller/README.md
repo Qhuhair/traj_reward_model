@@ -13,8 +13,9 @@ LLM_caller/
 ├── adapters/                          # API 适配器 (策略模式)
 │   ├── base.py                        #   BaseAdapter 抽象类
 │   ├── deepseek_adapters.py           #   OpenAIStyleAdapter (DeepSeek/OpenAI 兼容 API)
-│   ├── ollama_adapter.py              #   OllamaAdapter (Ollama 原生 /api/chat)
-│   └── qwen_vllm_adapter.py           #   QwenVLLMAdapter (多模态, 支持 before/after 截图)
+│   ├── qwen_vllm_adapter.py           #   QwenVLLMAdapter (OpenAI 兼容, 支持 before/after 截图)
+│   ├── responses_adapter.py           #   ResponsesAdapter (Responses API 多模态基准)
+│   └── ollama_adapter.py              #   OllamaAdapter (历史兼容)
 └── prompts/
     ├── RRM_V1.yaml                    #   模板: DeepSeek 用, 中文指令
     └── RRM_Qwen.yaml                  #   模板: Qwen 本地模型用, 严格格式 + /no_think
@@ -38,14 +39,37 @@ python main.py ../output/20250113_21442_test/traj_007/standardized.json llm_outp
 | 适配器 | 协议 | 端点 | 用途 |
 |--------|------|------|------|
 | `OpenAIStyleAdapter` | `openai_style` | `/v1/chat/completions` | DeepSeek, 远程 Qwen |
-| `OllamaAdapter` | `ollama` | `/api/chat` | 本地 Ollama (支持 `think: False`) |
-| `QwenVLLMAdapter` | `qwen_vllm` | `/chat/completions` | Qwen 多模态 (传入图片 base64) |
+| `QwenVLLMAdapter` | `qwen_vllm` | `/chat/completions` | 当前默认本地 Qwen 后端 |
+| `ResponsesAdapter` | `responses` | `/responses` | Codex/OpenAI Responses 多模态基准 |
+| `OllamaAdapter` | `ollama` | `/api/chat` | 历史兼容的本地 Ollama 后端 |
 
 切换模型只需改 `config.yaml` 一行:
 ```yaml
-active_model: "deepseek"      # → DeepSeek
-active_model: "qwen_local"    # → Ollama 本地 Qwen
+active_model: "deepseek"          # → DeepSeek
+active_model: "qwen_vllm_text"    # → vLLM 纯文本 Qwen
+active_model: "qwen_vllm_mm"      # → vLLM 多模态 Qwen
+active_model: "codex_mm_baseline" # → Responses API 多模态基准
 ```
+
+### Responses 多模态基准测试
+
+`codex_mm_baseline` 使用 `OPENAI_API_KEY` 环境变量读取密钥，不要把 key 写入仓库。
+
+离线检查 payload 结构：
+
+```bash
+python LLM_caller/test_responses_multimodal.py
+```
+
+命令说明：读取默认 `traj_007` 的第 1 步，构造 Responses API 多模态请求，不发起网络调用；输出图片块数量、文本块数量和模型名。
+
+在线测试单步：
+
+```bash
+OPENAI_API_KEY="你的key" python LLM_caller/test_responses_multimodal.py --online --step-idx=1
+```
+
+命令说明：`OPENAI_API_KEY` 指定 API 密钥；`--online` 表示真实调用接口；`--step-idx=1` 只测试第 1 步，避免一次性产生大量调用费用。
 
 ### Prompt 模板
 
@@ -78,7 +102,7 @@ python main.py input.json output.json --indices=3,7,12
 ## 配置示例
 
 ```yaml
-active_model: "qwen_local"
+active_model: "qwen_vllm_text"
 active_prompt: "RRM_Qwen"
 debug: true
 
@@ -88,10 +112,10 @@ models:
     base_url: "https://api.deepseek.com"
     model_name: "deepseek-v4-pro"
 
-  qwen_local:                   # 本地 Ollama Qwen
-    protocol: "ollama"
-    base_url: "http://localhost:11434"
-    model_name: "qwen354b"
-    max_tokens: 8192
+  qwen_vllm_text:               # 本地 vLLM Qwen
+    protocol: "qwen_vllm"
+    base_url: "http://localhost:8002/v1"
+    model_name: "Qwen3.5-4B"
+    max_tokens: 2048
     system_message: "直接输出think critique score三个XML标签的评估结果"
 ```

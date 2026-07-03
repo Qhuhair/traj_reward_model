@@ -36,11 +36,19 @@ def safe_load(path: str, default=None):
 
 def load_traj_output(out_dir: str) -> TrajReport | None:
     std = safe_load(os.path.join(out_dir, "standardized.json"))
-    llm = safe_load(os.path.join(out_dir, "llm_scores.json"), [])
-    prm = safe_load(os.path.join(out_dir, "prm_scores.json"), {})
+    llm_path = os.path.join(out_dir, "llm_scores.json")
+    prm_path = os.path.join(out_dir, "prm_scores.json")
+    if not os.path.exists(llm_path) or not os.path.exists(prm_path):
+        # 缺少核心阶段产物说明该轨迹未成功完成，不能用 0 分伪造成有效结果。
+        return None
+
+    llm = safe_load(llm_path, [])
+    prm = safe_load(prm_path, {})
     qa = safe_load(os.path.join(out_dir, "qa_reports.json"), [])
 
     if not std or not std.get("steps"):
+        return None
+    if not llm or not prm:
         return None
 
     steps_raw = std["steps"]

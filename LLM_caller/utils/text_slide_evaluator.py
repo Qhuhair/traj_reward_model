@@ -13,12 +13,12 @@ class TextSlideEvaluator:
     """
     纯文本滑动窗口评估器：
     - 每步取前后共3步的文本描述
-    - 用 qwen_local 纯文本模型评估
+    - 用 qwen_vllm_text 纯文本模型评估
     """
 
     def __init__(self, caller: LLMCaller = None):
         self.caller = caller or LLMCaller(
-            model="qwen_local",
+            model="qwen_vllm_text",
             prompt="RRM_Qwen_TextSlide"
         )
 

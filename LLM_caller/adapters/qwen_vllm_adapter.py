@@ -30,12 +30,22 @@ class QwenVLLMAdapter(BaseAdapter):
                 "image_url": {"url": f"data:image/jpeg;base64,{_encode_image(image_after)}"}
             })
 
-        content.append({"type": "text", "text": prompt})
+        if content:
+            content.append({"type": "text", "text": prompt})
+            user_content = content
+        else:
+            user_content = prompt
 
         headers = {"Authorization": f"Bearer {api_key}"}
+        messages = []
+        system_message = self.config.get("system_message", "")
+        if system_message:
+            messages.append({"role": "system", "content": system_message})
+        messages.append({"role": "user", "content": user_content})
+
         payload = {
             "model": model_name,
-            "messages": [{"role": "user", "content": content}],
+            "messages": messages,
             "max_tokens": max_tokens,
             "temperature": temperature,
         }

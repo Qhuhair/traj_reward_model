@@ -22,7 +22,13 @@ def build_command(config: VLLMConfig) -> list[str]:
         str(config.gpu_memory_utilization),
         "--max-model-len",
         str(config.max_model_len),
+        "--max-num-seqs",
+        str(config.max_num_seqs),
+        "--default-chat-template-kwargs",
+        f'{{"enable_thinking": {str(config.enable_thinking).lower()}}}',
     ]
+    if config.lora_modules:
+        cmd.extend(["--enable-lora", "--lora-modules", *config.lora_modules])
     if config.trust_remote_code:
         cmd.append("--trust-remote-code")
     return cmd
@@ -34,4 +40,3 @@ def build_env(config: VLLMConfig) -> dict[str, str]:
     if config.disable_flashinfer_sampler:
         env["VLLM_USE_FLASHINFER_SAMPLER"] = "0"
     return env
-

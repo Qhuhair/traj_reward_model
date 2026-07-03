@@ -21,7 +21,7 @@ trajs/<set>/traj_XXX/             原始轨迹集 (metadata + history + per-step
 │  Stage 2  LLM_caller         LLM 评分生成器                      │
 │            state_before + action + element + state_after         │
 │            →  <think> / <critique> / <score>                     │
-│            支持并发 (4 workers) + 多适配器 (DeepSeek/Ollama/Qwen) │
+│            支持并发 (4 workers) + 多适配器 (DeepSeek/vLLM/Ollama) │
 └──────────────────────────────┬───────────────────────────────────┘
                                │ llm_scores.json
                                ▼
@@ -78,15 +78,21 @@ trajs/<set>/traj_XXX/             原始轨迹集 (metadata + history + per-step
 │   ├── image_only.py                         #   纯图片模式
 │   └── gs.py                                 #   GUI-Shepherd 两步评估
 │
+├── framework_api/                            # 对外 API 抽象层
+│   ├── schema.py                             #   请求/响应数据结构
+│   ├── interfaces.py                         #   Handler / Service 协议
+│   ├── registry.py                           #   能力注册表
+│   └── service.py                            #   最小服务分发层
+│
 ├── env_parser/                    # Stage 1 — 环境解析器
 │   ├── config/parser_config.yaml
 │   ├── core/ (loader, state_builder, formatter, pipeline)
 │   └── utils/ (perception_utils, path_utils)
 │
 ├── LLM_caller/                    # Stage 2 — LLM 评分生成器
-│   ├── config.yaml                #   模型配置 (DeepSeek / Ollama / Qwen VL)
+│   ├── config.yaml                #   模型配置 (DeepSeek / Qwen vLLM / Ollama 兼容)
 │   ├── caller.py, utils.py
-│   ├── adapters/                  #   适配器 (OpenAI / Ollama / Qwen VLLM)
+│   ├── adapters/                  #   适配器 (OpenAI / Qwen vLLM / Ollama 兼容)
 │   ├── prompts/                   #   Prompt 模板 (RRM_V1 / RRM_Qwen / RRM_Qwen_MM)
 │   └── utils/
 │       ├── image_annotator.py     #   截图标注工具 (红叉+绿框)
@@ -129,7 +135,6 @@ output/                              # 各种模式输出
 ├── qwen3.5-4b-image-text/          # Qwen3.5-4B 多模态单步
 └── qwen3.5-4b-image-text-window/   # Qwen3.5-4B 多模态滑动窗口
 ```
-```
 
 ---
 
@@ -141,11 +146,25 @@ pip install pyyaml requests
 # 处理指定轨迹集
 python -m pipelines.full 20250113_21442_test
 
+# 指定输出目录名
+python -m pipelines.full 20250113_21442_test --output-name crossapp_qwen35_4b_test
+
+# 纯文本输入并静默运行
+python -m pipelines.full 20250113_21442_test --output-name crossapp_qwen35_4b_test --quiet
+
 # 处理所有轨迹集
 python -m pipelines.full
+
+# 处理所有轨迹集，并指定统一实验输出目录
+python -m pipelines.full --output-name crossapp_qwen35_4b_all
 ```
 
 根目录仍保留兼容入口，旧命令 `python run_pipeline.py <set_name>` 可以继续使用。
+指定单个轨迹集时，`--output-name` 会将结果写入 `output/<自定义名称>/`；
+处理全部轨迹集时，`--output-name` 会作为总实验目录，内部按轨迹集名分子目录保存。
+`pipelines.full` 默认使用纯文本输入：`--input-mode text --llm-model qwen_vllm_text --llm-prompt RRM_Qwen`。
+该默认配置要求 vLLM OpenAI 兼容服务已监听 `http://localhost:8002/v1`。
+`--quiet` 会把控制台日志追加写入输出目录下的 `pipeline.log`。
 
 ### 切换 LLM 模型
 
@@ -153,8 +172,10 @@ python -m pipelines.full
 
 ```yaml
 active_model: "deepseek"        # 云端 DeepSeek (质量最高, 需要 API key)
-active_model: "qwen_local"      # 本地 Ollama Qwen3.5-4B 纯文本 (免费, 100% QA通过率)
-active_model: "qwen_local_mm"   # 本地 Ollama Qwen3.5-4B 多模态 (含截图, 需GPU加速)
+active_model: "qwen_vllm_text"  # 本地 vLLM Qwen3.5-4B 纯文本 OpenAI 兼容接口
+active_model: "qwen_vllm_mm"    # 本地 vLLM 多模态 OpenAI 兼容接口（需模型支持图片）
+active_model: "qwen_local"      # 历史兼容：本地 Ollama 纯文本
+active_model: "qwen_local_mm"   # 历史兼容：本地 Ollama 多模态
 active_model: "qwen_remote"     # 远程服务器 Qwen3.5-4B (纯文本, HTTP API)
 ```
 
@@ -162,13 +183,23 @@ active_model: "qwen_remote"     # 远程服务器 Qwen3.5-4B (纯文本, HTTP AP
 `python -m pipelines.multimodal <set_name>`。兼容旧入口
 `python run_multimodal_pipeline.py <set_name>` 仍可使用。
 
-### 窗口模式
+### 不同模式运行命令
+
+以下命令默认处理 `trajs/` 下全部轨迹集。传入轨迹集名时只处理该集合，例如
+`python -m pipelines.full 20260113_214142_subgoal ...`。本地 Qwen 模式统一使用
+vLLM OpenAI 兼容接口，服务地址为 `http://localhost:8002/v1`。
 
 | 入口 | 用途 |
 |------|------|
-| `python -m pipelines.text_window` | 纯文本滑动窗口（3步上下文，100% think完整率） |
-| `python -m pipelines.sliding` | 多模态滑动窗口（含截图，含上下文重试） |
-| `python -m pipelines.image_only` | 纯图片模式（已废弃，不可行） |
+| `python -m pipelines.full --output-name crossapp_qwen35_4b_vllm_text --input-mode text --llm-model qwen_vllm_text --llm-prompt RRM_Qwen --quiet` | 纯文本单步；输出到 `output/crossapp_qwen35_4b_vllm_text/` |
+| `python -m pipelines.full --output-name crossapp_qwen35_4b_multimodal_step --input-mode multimodal --llm-model qwen_vllm_mm --llm-prompt RRM_Qwen_MM --quiet` | 多模态单步；输入文本 + 前后截图；需 vLLM 模型支持图片 |
+| `python -m pipelines.text_window --output-name crossapp_qwen35_4b_text_window --quiet` | 纯文本滑动窗口；3 步上下文 |
+| `python -m pipelines.sliding --output-name crossapp_qwen35_4b_multimodal_window --quiet` | 多模态滑动窗口；含截图、窗口上下文和 QA 重试 |
+| `python -m pipelines.gs --output-name crossapp_qwen35_4b_gs --quiet` | GUI-Shepherd 两步；先视觉匹配，再文本评分 |
+| `python -m pipelines.image_only --output-name crossapp_qwen35_4b_image_only --quiet` | 纯图片模式；已废弃，仅保留兼容入口 |
+
+`--output-name` 指定 `output/` 下的实验目录；`--quiet` 将日志写入该目录下的
+`pipeline.log`。
 
 ### 输出
 
@@ -181,6 +212,7 @@ output/20250113_21442_test/
 ├── traj_007/
 │   ├── standardized.json          # env_parser: 标准化 S-A 对 (含 before/after 状态)
 │   ├── llm_scores.json            # LLM_caller: think/critique/score (经QA审查后)
+│   ├── LLMscore.json              # llm_scores.json 的兼容副本
 │   ├── qa_reports.json            # logic_QA: 每步 Meta-Score/is_accepted
 │   ├── prm_scores.json            # core_prm: Progress/TD-Error/GAE
 │   └── summary.json               # report:   该轨迹汇总
@@ -232,7 +264,7 @@ output/20250113_21442_test/
 | 适配器 | 协议 | 用途 |
 |--------|------|------|
 | `OpenAIStyleAdapter` | `/v1/chat/completions` | DeepSeek, 远程 Qwen |
-| `OllamaAdapter` | `/api/chat` | 本地 Ollama (原生 API, 支持参数控制) |
+| `OllamaAdapter` | `/api/chat` | 历史兼容的本地 Ollama 后端 |
 | `QwenVLLMAdapter` | `/v1/chat/completions` | Qwen 多模态 (传入 before/after 图片) |
 
 **Prompt 模板**:
@@ -361,7 +393,7 @@ composite     ├─────────────────────
 | **单一职责 (SRP)** | 每个文件职责唯一 (loader 管 IO, builder 管转换, evaluator 管评判, scorer 管计算) |
 | **高内聚低耦合** | 模块间仅通过 JSON 文件交互，无代码级依赖；pipeline 基于子进程串联 |
 | **不修改原始数据** | 所有模块只读取 `trajs/`，产物写入 `output/<set_name>/` |
-| **适配器模式** | LLM_caller 支持 OpenAI / Ollama / Qwen VLLM 三种后端；core_prm 支持多种 Q 值输入 |
+| **适配器模式** | LLM_caller 支持 OpenAI / Qwen vLLM / Ollama 兼容后端；core_prm 支持多种 Q 值输入 |
 
 ## 扩展指南
 
@@ -381,5 +413,5 @@ composite     ├─────────────────────
 - Python 3.10+
 - PyYAML
 - requests
-- DeepSeek API (或 Ollama 本地部署, 或 LMDeploy 本地部署)
+- DeepSeek API 或本地 vLLM OpenAI 兼容服务
 - (可选) lmdeploy, transformers, torch (用于本地模型加载)

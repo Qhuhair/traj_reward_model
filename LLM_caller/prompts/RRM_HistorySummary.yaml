@@ -1,0 +1,14 @@
+name: "history_summary_v1"
+description: "分层记忆历史摘要 — 只基于历史步骤文本生成摘要"
+template: |
+  【任务】{task_desc}
+
+  【需要摘要的历史步骤】
+  {history_steps_text}
+
+  请生成面向 GUI 轨迹评分的历史摘要，要求：
+  1. 只概括给定历史步骤，不推测未来。
+  2. 保留已完成子目标、当前页面状态、关键错误、合理回退、低分或冲突步骤。
+  3. 不引用图片，不添加不存在的信息。
+  4. 输出不超过 {history_summary_max_chars} 字。
+  5. 只输出摘要文本，不输出 XML 标签。

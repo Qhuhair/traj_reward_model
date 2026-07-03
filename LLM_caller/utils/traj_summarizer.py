@@ -17,7 +17,7 @@ class TrajectorySummarizer:
 
     def __init__(self, caller: LLMCaller = None):
         self.caller = caller or LLMCaller(
-            model="qwen_local",
+            model="qwen_vllm_text",
             prompt="RRM_TrajSummary"
         )
 

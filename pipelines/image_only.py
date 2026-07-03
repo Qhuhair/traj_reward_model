@@ -1,11 +1,15 @@
-"""
-纯图片模式流水线：env_parser → annotation → LLM_caller (image-only) → logic_QA → core_prm
-"""
+"""纯图片模式流水线：env_parser → annotation → LLM_caller → logic_QA → core_prm。"""
 import os, sys, json, subprocess
 
 from pipelines.paths import PROJECT_ROOT, PYTHON
+from pipelines.common_cli import (
+    build_parser,
+    iter_targets,
+    resolve_all_root,
+    resolve_target_dir,
+    run_quietly_if_needed,
+)
 
-SET_NAME = sys.argv[1] if len(sys.argv) > 1 else "20250113_21442_test"
 OUTPUT_BASE = os.path.join(PROJECT_ROOT, "output", "qwen3.5-image")
 TRAJS_ROOT = os.path.join(PROJECT_ROOT, "trajs")
 
@@ -19,6 +23,7 @@ from annotate_traj_images import annotate_standardized
 
 
 def run_cmd(name, cmd_list, timeout=3600):
+    """运行阶段子进程，并过滤低价值日志。"""
     print(f"\n[{name}]")
     result = subprocess.run(cmd_list, capture_output=True, text=True, timeout=timeout, cwd=PROJECT_ROOT)
     for line in result.stdout.strip().split("\n"):
@@ -31,49 +36,50 @@ def run_cmd(name, cmd_list, timeout=3600):
     return result.returncode == 0
 
 
-def process_one_traj(traj_id, run_dir):
+def process_one_traj(set_name, traj_id, run_dir):
+    """处理单条轨迹；该模式已废弃，仅保留兼容能力。"""
     out_dir = os.path.join(run_dir, traj_id)
     os.makedirs(out_dir, exist_ok=True)
-    traj_dir = os.path.join(TRAJS_ROOT, SET_NAME, traj_id)
+    traj_dir = os.path.join(TRAJS_ROOT, set_name, traj_id)
 
     std_path = os.path.join(out_dir, "standardized.json")
     llm_path = os.path.join(out_dir, "llm_scores.json")
     qa_path = os.path.join(out_dir, "qa_reports.json")
     prm_path = os.path.join(out_dir, "prm_scores.json")
 
-    # Stage 1: env_parser
+    # Stage 1：解析原始轨迹。
     pipeline = EnvParserPipeline()
     std_data = pipeline.run(traj_dir)
     save_json(std_path, std_data)
     print(f"  Steps: {len(std_data['steps'])}")
 
-    # Stage 1.5: annotation
+    # Stage 1.5：生成标注图片。
     annotator = ImageAnnotator()
     annotate_standardized(std_data, os.path.join(out_dir, "annotated_images"), annotator)
     save_json(std_path, std_data)
     print(f"  Annotations saved")
 
-    # Stage 2: LLM caller (image-only mode)
+    # Stage 2：使用 vLLM 多模态接口执行纯图片 prompt。
     cmd = [PYTHON, os.path.join(PROJECT_ROOT, "LLM_caller", "main.py"),
            std_path, llm_path,
-           "--model=qwen_local_image", "--prompt=RRM_Qwen_ImageOnly"]
+           "--model=qwen_vllm_mm", "--prompt=RRM_Qwen_ImageOnly"]
     if not run_cmd("LLM_caller", cmd):
         return False
 
-    # Stage 2.5: QA
+    # Stage 2.5：QA 审查。
     cmd = [PYTHON, os.path.join(PROJECT_ROOT, "logic_QA", "main.py"),
            std_path, llm_path, qa_path]
     if not run_cmd("logic_QA", cmd):
         return False
 
-    # Inject scores
+    # 将 LLM 分数写回 standardized.json，供 PRM 读取。
     with open(llm_path, "r", encoding="utf-8") as f:
         llm_results = json.load(f)
     for step, llm in zip(std_data["steps"], llm_results):
         step["score"] = llm["score"]
     save_json(std_path, std_data)
 
-    # Stage 3: core_prm
+    # Stage 3：计算过程奖励。
     cmd = [PYTHON, os.path.join(PROJECT_ROOT, "core_prm", "main.py"),
            std_path, prm_path]
     if not run_cmd("core_prm", cmd):
@@ -83,19 +89,19 @@ def process_one_traj(traj_id, run_dir):
     return True
 
 
-def main():
-    run_dir = os.path.join(OUTPUT_BASE, SET_NAME)
+def process_set(set_name, run_dir):
+    """处理一个轨迹集，并生成报告和筛选结果。"""
     os.makedirs(run_dir, exist_ok=True)
 
-    trajs = list_traj_dirs_in_set(TRAJS_ROOT, SET_NAME)
-    print(f"Processing set: {SET_NAME} ({len(trajs)} trajectories)")
+    trajs = list_traj_dirs_in_set(TRAJS_ROOT, set_name)
+    print(f"Processing set: {set_name} ({len(trajs)} trajectories)")
 
     for tid in trajs:
-        success = process_one_traj(tid, run_dir)
+        success = process_one_traj(set_name, tid, run_dir)
         if not success:
             print(f"  [WARN] {tid} had errors, continuing...")
 
-    # Report + Filter
+    # 所有轨迹完成后统一生成集合报告和筛选结果。
     print(f"\n{'='*50}")
     from report.writer import generate as generate_report
     from filter.core.filter_engine import FilterEngine
@@ -114,6 +120,26 @@ def main():
             print(f"    {cid}: {cnt}")
     except Exception as e:
         print(f"  Filter error: {e}")
+
+
+def parse_args():
+    """解析统一 CLI 参数。"""
+    return build_parser("运行纯图片兼容轨迹评估流水线。").parse_args()
+
+
+def main():
+    args = parse_args()
+
+    def runner():
+        all_root = resolve_all_root(args, OUTPUT_BASE)
+        for set_name in iter_targets(args):
+            if args.target:
+                run_dir = resolve_target_dir(set_name, args, OUTPUT_BASE)
+            else:
+                run_dir = os.path.join(all_root, set_name)
+            process_set(set_name, run_dir)
+
+    run_quietly_if_needed(args, OUTPUT_BASE, runner)
 
 
 if __name__ == "__main__":

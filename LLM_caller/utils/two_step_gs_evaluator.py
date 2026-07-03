@@ -25,7 +25,7 @@ class TwoStepGSEvaluator:
         输出: 【最终得分: 0】或【最终得分: 1】
     """
 
-    def __init__(self, model="qwen_gs"):
+    def __init__(self, model="qwen_vllm_mm"):
         self.caller_step1 = LLMCaller(model=model, prompt="RRM_Qwen_GS")
         # step2 caller 在 evaluate_step 中按分支动态创建
 
@@ -129,7 +129,7 @@ class TwoStepGSEvaluator:
 
         if s1["matched"] == "一致":
             # 视觉匹配一致 → 传截图让模型验证
-            step2_caller = LLMCaller(model="qwen_gs", prompt="RRM_Qwen_GS2")
+            step2_caller = LLMCaller(model="qwen_vllm_mm", prompt="RRM_Qwen_GS2")
             step2_result = step2_caller.call(
                 **step2_kwargs,
                 image_before=img_before,
@@ -137,7 +137,7 @@ class TwoStepGSEvaluator:
             )
         else:
             # 视觉匹配不一致 → 纯文本，不传截图
-            step2_caller = LLMCaller(model="qwen_gs", prompt="RRM_Qwen_GS2_text")
+            step2_caller = LLMCaller(model="qwen_vllm_text", prompt="RRM_Qwen_GS2_text")
             step2_result = step2_caller.call(**step2_kwargs)
         # 优先用 caller 解析出的 score（_parse_gs 已正确提取【最终得分】）
         score = float(step2_result.get("score", 0) or 0)
